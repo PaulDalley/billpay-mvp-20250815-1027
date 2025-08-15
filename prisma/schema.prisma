@@ -1,0 +1,117 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum BillStatus {
+  PENDING
+  DUE
+  PAID
+  CANCELLED
+}
+
+enum Provider {
+  MICROSOFT
+  GMAIL
+  MANUAL
+}
+
+model User {
+  id         String     @id @default(cuid())
+  email      String?    @unique
+  name       String?
+  createdAt  DateTime   @default(now())
+  properties Property[]
+  bills      Bill[]
+  rules      Rule[]
+  accounts   Account[]
+  payments   Payment[]
+}
+
+model Property {
+  id        String   @id @default(cuid())
+  userId    String
+  label     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  bills  Bill[]
+  rules  Rule[]   // <-- back-relation for Rule.property
+
+  @@index([userId])
+}
+
+model Bill {
+  id           String     @id @default(cuid())
+  userId       String
+  propertyId   String?
+  issuer       String
+  amountCents  Int
+  dueDate      DateTime?
+  status       BillStatus @default(PENDING)
+  source       String?
+  sourceId     String?
+  createdAt    DateTime   @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+  payments Payment[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status, dueDate])
+}
+
+model Rule {
+  id          String   @id @default(cuid())
+  userId      String
+  pattern     String
+  propertyId  String?
+  createdAt   DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+
+  @@index([userId])
+  @@index([propertyId])
+}
+
+model Account {
+  id            String    @id @default(cuid())
+  userId        String
+  provider      Provider
+  externalId    String?
+  accessToken   String?
+  refreshToken  String?
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([provider])
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  billId      String
+  amountCents Int
+  method      String?
+  paidAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+  bill Bill @relation(fields: [billId], references: [id])
+
+  @@index([userId])
+  @@index([billId])
+}

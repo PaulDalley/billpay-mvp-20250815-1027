@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/session";
+export const runtime = "nodejs";
+export async function GET(req:Request){ try{ const userId=requireUserId(); const { searchParams }=new URL(req.url); const propertyId=searchParams.get("propertyId"); const bucket=searchParams.get("bucket"); const where:any={ userId }; if(propertyId){ where.category="property"; where.propertyId=propertyId; } else if(bucket && bucket!=="all"){ where.category=bucket; } const bills=await prisma.bill.findMany({ where, orderBy:{ receivedAt:"desc" }, take:100 }); const items=bills.map(b=>({ id:b.messageId, subject:b.subject||"", from:b.fromName||b.fromAddress||"", received:b.receivedAt?b.receivedAt.toISOString():"", hasAttachments:!!b.hasAttachments, webLink:b.webLink||"", amountDue:b.amountDue??null, dueDate:b.dueDate?b.dueDate.toISOString():null, category:(b.category as any)||"unclassified", propertyId:b.propertyId||undefined })); return NextResponse.json({ ok:true, count:items.length, items }); }catch{ return NextResponse.json({ ok:false, error:"unauthenticated" }, { status:401 }); } }

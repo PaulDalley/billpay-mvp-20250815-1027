@@ -1,0 +1,1 @@
+cat > /tmp/bill_fix.zsh <<'ZSH' && chmod +x /tmp/bill_fix.zsh && zsh /tmp/bill_fix.zsh
